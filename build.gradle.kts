@@ -23,7 +23,12 @@ tasks.test {
 }
 
 tasks.withType<KotlinCompile>() {
+    dependsOn(tasks.generateGrammarSource)
     kotlinOptions.jvmTarget = "1.8"
+}
+
+tasks.generateGrammarSource {
+    outputDirectory = File("src/main/gen")
 }
 
 application {
