@@ -6,19 +6,36 @@ data class AcyclicSegment(val metas: List<ASMeta> = emptyList(), val symbol: ASS
         companion object {
             // Placeholder value for Emptys
             val NONE = ASSymbol('\u0000', -1)
+            val START = ASSymbol('⊢', 0)
             val END = ASSymbol('⊣', 0)
         }
+
+        override fun toString() = char + "_$index"
     }
 
     enum class Meta {
-        POpen,
-        PClose,
-        Empty
+        POpen { override fun toString() = "(" },
+        PClose { override fun toString() = ")" },
+        Empty { override fun toString() = "ε" }
     }
 
     data class ASMeta(val char: Meta, val index: Int) {
-
+        override fun toString() = char.toString() + "_$index"
     }
+}
+
+/**
+ * Returns all the symbols present in the MRE.
+ */
+fun MRE.symbols(): List<AcyclicSegment.ASSymbol> = when (this) {
+    is MAlt -> fst.symbols() + snd.symbols()
+    is MConcat -> fst.symbols() + snd.symbols()
+    is MRE.MEmpty -> emptyList()
+    is MRE.MNull -> emptyList()
+    is MParen -> expr.symbols()
+    is MPlus -> expr.symbols()
+    is MStar -> expr.symbols()
+    is MSymbol -> listOf(AcyclicSegment.ASSymbol(this))
 }
 
 fun MRE.iniAS(): List<AcyclicSegment> = when (this) {
@@ -93,10 +110,10 @@ fun MRE.folAS(symbol: AcyclicSegment.ASSymbol): List<AcyclicSegment> {
     while (!parents.empty()) {
         val parent = parents.pop()
         when (parent) {
-            is MAlt -> lastChild = parent
+            is MAlt -> Unit
             is MConcat -> if (parent.fst == lastChild)
                     return follow + parent.snd.iniAS().map { AcyclicSegment(metas + it.metas, it.symbol) }
-                else lastChild = parent
+                else Unit
             is MParen -> metas += AcyclicSegment.ASMeta(AcyclicSegment.Meta.PClose, parent.index)
             is MPlus -> follow.addAll(parent.expr.iniAS().map { AcyclicSegment(metas + it.metas, it.symbol) } )
             is MStar -> follow.addAll(parent.expr.iniAS().map { AcyclicSegment(metas + it.metas, it.symbol) } )
@@ -107,3 +124,5 @@ fun MRE.folAS(symbol: AcyclicSegment.ASSymbol): List<AcyclicSegment> {
 
     return follow + listOf(AcyclicSegment(metas, AcyclicSegment.ASSymbol.END))
 }
+
+fun MRE.folAS(): Map<AcyclicSegment.ASSymbol, List<AcyclicSegment>> = symbols().associateWith { folAS(it) }

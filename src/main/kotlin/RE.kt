@@ -74,6 +74,12 @@ sealed class RE {
 }
 
 data class Symbol(val symbol: Char) : RE() {
+    companion object {
+        val START = Symbol('⊢')
+        val END = Symbol('⊣')
+    }
+
+    override fun toString() = symbol.toString()
 }
 
 data class Star(val expr: RE) : RE() {

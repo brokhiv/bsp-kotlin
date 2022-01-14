@@ -2,7 +2,9 @@ import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 
 class InitialFollowTest {
-    val mre = MRE.valueOf(text)
+    companion object {
+        val mre = MRE.valueOf(text)
+    }
 
     @Test
     fun `Initial set of example`() {
@@ -86,5 +88,78 @@ class InitialFollowTest {
             )
         )
         expected.forEach { (s, f) -> assertEquals(f, mre.folAS(s), "Iteration: $s\n") }
+    }
+
+    @Test
+    fun `Symbols of example`() {
+        val expected = listOf(
+            AcyclicSegment.ASSymbol('a', 4),
+            AcyclicSegment.ASSymbol('b', 5),
+            AcyclicSegment.ASSymbol('a', 6),
+            AcyclicSegment.ASSymbol('a', 7),
+            AcyclicSegment.ASSymbol('b', 8),
+            AcyclicSegment.ASSymbol('a', 9),
+            AcyclicSegment.ASSymbol('b', 11)
+        )
+        assertEquals(expected, mre.symbols())
+    }
+
+    @Test
+    fun `Map of Follow sets`() {
+        val expected = mapOf(
+            AcyclicSegment.ASSymbol('a', 4) to listOf(
+                AcyclicSegment(symbol = AcyclicSegment.ASSymbol('a', 4)),
+                AcyclicSegment(listOf(
+                    AcyclicSegment.ASMeta(AcyclicSegment.Meta.PClose, 3),
+                    AcyclicSegment.ASMeta(AcyclicSegment.Meta.POpen, 3)
+                ), AcyclicSegment.ASSymbol('a', 4)),
+                AcyclicSegment(listOf(
+                    AcyclicSegment.ASMeta(AcyclicSegment.Meta.PClose, 3)
+                ), AcyclicSegment.ASSymbol('b', 5)),
+                AcyclicSegment(listOf(
+                    AcyclicSegment.ASMeta(AcyclicSegment.Meta.PClose, 3)
+                ), AcyclicSegment.ASSymbol('a', 7)),
+                AcyclicSegment(listOf(
+                    AcyclicSegment.ASMeta(AcyclicSegment.Meta.PClose, 3),
+                    AcyclicSegment.ASMeta(AcyclicSegment.Meta.PClose, 2),
+                    AcyclicSegment.ASMeta(AcyclicSegment.Meta.PClose, 1)
+                ), AcyclicSegment.ASSymbol('b', 11))
+            ),
+            AcyclicSegment.ASSymbol('b', 5) to listOf(
+                AcyclicSegment(symbol = AcyclicSegment.ASSymbol('a', 6))
+            ),
+            AcyclicSegment.ASSymbol('a', 6) to listOf(
+                AcyclicSegment(listOf(
+                    AcyclicSegment.ASMeta(AcyclicSegment.Meta.POpen, 3)
+                ), AcyclicSegment.ASSymbol('a', 4)),
+                AcyclicSegment(symbol = AcyclicSegment.ASSymbol('b', 5)),
+                AcyclicSegment(symbol = AcyclicSegment.ASSymbol('a', 7)),
+                AcyclicSegment(listOf(
+                    AcyclicSegment.ASMeta(AcyclicSegment.Meta.PClose, 2),
+                    AcyclicSegment.ASMeta(AcyclicSegment.Meta.PClose, 1)
+                ), AcyclicSegment.ASSymbol('b', 11))
+            ),
+            AcyclicSegment.ASSymbol('a', 7) to listOf(
+                AcyclicSegment(symbol = AcyclicSegment.ASSymbol('b', 8))
+            ),
+            AcyclicSegment.ASSymbol('b', 8) to listOf(
+                AcyclicSegment(symbol = AcyclicSegment.ASSymbol('a', 9))
+            ),
+            AcyclicSegment.ASSymbol('a', 9) to listOf(
+                AcyclicSegment(listOf(
+                    AcyclicSegment.ASMeta(AcyclicSegment.Meta.POpen, 3)
+                ), AcyclicSegment.ASSymbol('a', 4)),
+                AcyclicSegment(symbol = AcyclicSegment.ASSymbol('b', 5)),
+                AcyclicSegment(symbol = AcyclicSegment.ASSymbol('a', 7)),
+                AcyclicSegment(listOf(
+                    AcyclicSegment.ASMeta(AcyclicSegment.Meta.PClose, 2),
+                    AcyclicSegment.ASMeta(AcyclicSegment.Meta.PClose, 1)
+                ), AcyclicSegment.ASSymbol('b', 11))
+            ),
+            AcyclicSegment.ASSymbol('b', 11) to listOf(
+                AcyclicSegment(symbol = AcyclicSegment.ASSymbol.END)
+            )
+        )
+        assertEquals(expected, mre.folAS())
     }
 }
