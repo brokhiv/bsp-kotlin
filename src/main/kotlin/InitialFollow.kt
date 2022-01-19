@@ -4,8 +4,6 @@ data class AcyclicSegment(val metas: List<ASMeta> = emptyList(), val symbol: ASS
     data class ASSymbol(val char: Char, val index: Int) {
         constructor(symbol: MSymbol): this(symbol.symbol, symbol.index)
         companion object {
-            // Placeholder value for Emptys
-            val NONE = ASSymbol('\u0000', -1)
             val START = ASSymbol('⊢', 0)
             val END = ASSymbol('⊣', 0)
         }
@@ -39,11 +37,12 @@ fun MRE.symbols(): List<AcyclicSegment.ASSymbol> = when (this) {
 }
 
 fun MRE.iniAS(): List<AcyclicSegment> = when (this) {
-    is MAlt -> fst.iniAS() + snd.iniAS()
+    is MAlt ->
+        fst.iniAS() + snd.iniAS()
     is MConcat -> {
         val iniSnd = snd.iniAS()
         fst.iniAS().flatMap { (m, s) ->
-            if (s == AcyclicSegment.ASSymbol.NONE)
+            if (s == AcyclicSegment.ASSymbol.END)
                 // Add iniAS of the second part to Empty expressions
                 iniSnd.map { AcyclicSegment(m + it.metas, it.symbol) }
             else listOf(AcyclicSegment(m, s))
@@ -51,20 +50,34 @@ fun MRE.iniAS(): List<AcyclicSegment> = when (this) {
     }
     is MRE.MEmpty -> listOf(AcyclicSegment(
         listOf(AcyclicSegment.ASMeta(AcyclicSegment.Meta.Empty, index)),
-        AcyclicSegment.ASSymbol.NONE)
+        AcyclicSegment.ASSymbol.END)
     )
     is MRE.MNull -> error("No initial set for Null")
     is MParen -> expr.iniAS().map { (metas, symbol) ->
         AcyclicSegment(
             listOf(AcyclicSegment.ASMeta(AcyclicSegment.Meta.POpen, index)) + metas +
                 // close an empty expression
-                (if (symbol == AcyclicSegment.ASSymbol.NONE) listOf(AcyclicSegment.ASMeta(AcyclicSegment.Meta.PClose, index))
+                (if (symbol == AcyclicSegment.ASSymbol.END) listOf(AcyclicSegment.ASMeta(AcyclicSegment.Meta.PClose, index))
                 else emptyList()),
             symbol
         )
     }
-    is MPlus -> expr.iniAS()
-    is MStar -> expr.iniAS()
+    is MPlus -> {
+        var iniAS = expr.iniAS()
+        val (terminal, nonterminal) = iniAS.partition { it.symbol != AcyclicSegment.ASSymbol.END }
+        iniAS += nonterminal.flatMap { nt ->
+            terminal.map { t -> AcyclicSegment(nt.metas + t.metas, t.symbol) }
+        }
+        iniAS
+    }
+    is MStar -> {
+        var iniAS = expr.iniAS()
+        val (terminal, nonterminal) = iniAS.partition { it.symbol != AcyclicSegment.ASSymbol.END }
+        iniAS += nonterminal.flatMap { nt ->
+            terminal.map { t -> AcyclicSegment(nt.metas + t.metas, t.symbol) }
+        }
+        iniAS
+    }
     is MSymbol -> listOf(AcyclicSegment(symbol = AcyclicSegment.ASSymbol(this)))
 }
 
@@ -110,13 +123,30 @@ fun MRE.folAS(symbol: AcyclicSegment.ASSymbol): List<AcyclicSegment> {
     while (!parents.empty()) {
         val parent = parents.pop()
         when (parent) {
-            is MAlt -> Unit
+            is MAlt -> {}
             is MConcat -> if (parent.fst == lastChild)
                     return follow + parent.snd.iniAS().map { AcyclicSegment(metas + it.metas, it.symbol) }
-                else Unit
-            is MParen -> metas += AcyclicSegment.ASMeta(AcyclicSegment.Meta.PClose, parent.index)
-            is MPlus -> follow.addAll(parent.expr.iniAS().map { AcyclicSegment(metas + it.metas, it.symbol) } )
-            is MStar -> follow.addAll(parent.expr.iniAS().map { AcyclicSegment(metas + it.metas, it.symbol) } )
+                else {}
+            is MParen -> {
+                metas += AcyclicSegment.ASMeta(AcyclicSegment.Meta.PClose, parent.index)
+                follow.replaceAll {
+                    if (it.symbol == AcyclicSegment.ASSymbol.END)
+                        AcyclicSegment(it.metas + listOf(AcyclicSegment.ASMeta(AcyclicSegment.Meta.PClose, parent.index)), it.symbol)
+                    else it
+                }
+            }
+            is MPlus -> follow.addAll(parent.expr.iniAS()
+                .partition { it.symbol != AcyclicSegment.ASSymbol.END }
+                .let { (ts, ns) -> ns
+                    .flatMap { n -> ts.map { t -> AcyclicSegment(n.metas + t.metas, t.symbol) } } + ts + ns }
+                .map { AcyclicSegment(metas + it.metas, it.symbol) }
+            )
+            is MStar -> follow.addAll(parent.expr.iniAS()
+                .partition { it.symbol != AcyclicSegment.ASSymbol.END }
+                .let { (ts, ns) -> ns
+                    .flatMap { n -> ts.map { t -> AcyclicSegment(n.metas + t.metas, t.symbol) } } + ts + ns }
+                .map { AcyclicSegment(metas + it.metas, it.symbol) }
+            )
             else -> error("Invalid parent $parent")
         }
         lastChild = parent

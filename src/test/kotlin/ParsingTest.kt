@@ -1,7 +1,8 @@
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 
-const val text = "(((a)+ | ba | aba)+ | 1) b"
+const val mainExample = "(((a)+ | ba | aba)+ | 1) b"
+const val infAmbi = "(a | 1)+"
 
 class REParsingTest {
     @Test
@@ -24,7 +25,7 @@ class REParsingTest {
             ),
             Symbol('b')
         )
-        assertEquals(RE.valueOf(text), expected)
+        assertEquals(RE.valueOf(mainExample), expected)
     }
 
     @Test
@@ -64,6 +65,20 @@ class REParsingTest {
             ),
             MSymbol('b', 11)
         )
-        assertEquals(MRE.valueOf(text), expected)
+        assertEquals(MRE.valueOf(mainExample), expected)
+    }
+
+    @Test
+    fun `MAST of infinitely ambiguous`() {
+        val expected = MParen(
+            MPlus(
+                MAlt(
+                    MSymbol('a', 2),
+                    MRE.MEmpty(3)
+                )
+            ),
+            1
+        )
+        assertEquals(MRE.valueOf(infAmbi), expected)
     }
 }

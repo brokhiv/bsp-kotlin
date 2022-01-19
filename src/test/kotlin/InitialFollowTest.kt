@@ -3,7 +3,8 @@ import kotlin.test.assertEquals
 
 class InitialFollowTest {
     companion object {
-        val mre = MRE.valueOf(text)
+        val mainMRE = MRE.valueOf(mainExample)
+        val infAmbiMRE = MRE.valueOf(infAmbi)
     }
 
     @Test
@@ -28,7 +29,7 @@ class InitialFollowTest {
                 AcyclicSegment.ASMeta(AcyclicSegment.Meta.PClose, 1)
             ), AcyclicSegment.ASSymbol('b', 11))
         )
-        assertEquals(expected, mre.iniAS())
+        assertEquals(expected, mainMRE.iniAS())
     }
 
     @Test
@@ -87,7 +88,7 @@ class InitialFollowTest {
                 AcyclicSegment(symbol = AcyclicSegment.ASSymbol.END)
             )
         )
-        expected.forEach { (s, f) -> assertEquals(f, mre.folAS(s), "Iteration: $s\n") }
+        expected.forEach { (s, f) -> assertEquals(f, mainMRE.folAS(s), "Iteration: $s\n") }
     }
 
     @Test
@@ -101,7 +102,7 @@ class InitialFollowTest {
             AcyclicSegment.ASSymbol('a', 9),
             AcyclicSegment.ASSymbol('b', 11)
         )
-        assertEquals(expected, mre.symbols())
+        assertEquals(expected, mainMRE.symbols())
     }
 
     @Test
@@ -160,6 +161,39 @@ class InitialFollowTest {
                 AcyclicSegment(symbol = AcyclicSegment.ASSymbol.END)
             )
         )
-        assertEquals(expected, mre.folAS())
+        assertEquals(expected, mainMRE.folAS())
+    }
+
+    @Test
+    fun `Initial and Follow of infinitely ambiguous`() {
+        val expectedIni = listOf(
+            AcyclicSegment(listOf(
+                AcyclicSegment.ASMeta(AcyclicSegment.Meta.POpen, 1)
+            ), AcyclicSegment.ASSymbol('a', 2)),
+            AcyclicSegment(listOf(
+                AcyclicSegment.ASMeta(AcyclicSegment.Meta.POpen, 1),
+                AcyclicSegment.ASMeta(AcyclicSegment.Meta.Empty, 3)
+            ), AcyclicSegment.ASSymbol('a', 2)),
+            AcyclicSegment(listOf(
+                AcyclicSegment.ASMeta(AcyclicSegment.Meta.POpen, 1),
+                AcyclicSegment.ASMeta(AcyclicSegment.Meta.Empty, 3),
+                AcyclicSegment.ASMeta(AcyclicSegment.Meta.PClose, 1)
+            ), AcyclicSegment.ASSymbol.END)
+        )
+        assertEquals(expectedIni.toSet(), infAmbiMRE.iniAS().toSet())
+        val expectedFol = mapOf(AcyclicSegment.ASSymbol('a', 2) to listOf(
+            AcyclicSegment(emptyList(), AcyclicSegment.ASSymbol('a', 2)),
+            AcyclicSegment(listOf(
+                AcyclicSegment.ASMeta(AcyclicSegment.Meta.Empty, 3)
+            ), AcyclicSegment.ASSymbol('a', 2)),
+            AcyclicSegment(listOf(
+                AcyclicSegment.ASMeta(AcyclicSegment.Meta.PClose, 1)
+            ), AcyclicSegment.ASSymbol.END),
+            AcyclicSegment(listOf(
+                AcyclicSegment.ASMeta(AcyclicSegment.Meta.Empty, 3),
+                AcyclicSegment.ASMeta(AcyclicSegment.Meta.PClose, 1)
+            ), AcyclicSegment.ASSymbol.END)
+        ))
+        assertEquals(expectedFol.mapValues { (_, v) -> v.toSet() }, infAmbiMRE.folAS().mapValues { (_, v) -> v.toSet() })
     }
 }
